@@ -1,16 +1,20 @@
-#load("@rules_python//python:py_binary.bzl", "py_binary")
-load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@rules_python//python:defs.bzl", "py_binary")
 load("@rules_license//rules:license.bzl", "license")
 
 licenses(["notice"])
 
 package(
-    #    default_applicable_licenses = [":package_license"],
+    default_applicable_licenses = [":package_license"],
     default_visibility = ["//visibility:public"],
     features = ["-use_header_modules"],
 )
 
-#exports_files(["LICENSE"])
+license(
+    name = "package_license",
+    package_name = "binaryen",
+)
+
+exports_files(["LICENSE"])
 
 BINARYEN_COPTS = [
     "-fexceptions",
@@ -49,73 +53,73 @@ cc_library(
     ]),
 )
 
-#cc_binary(
-#    name = "wasm2js",
-#    srcs = [
-#        "src/tools/optimization-options.h",
-#        "src/tools/tool-options.h",
-#        "src/tools/wasm2js.cpp",
-#    ],
-#    copts = BINARYEN_COPTS,
-#    includes = ["src/tools"],
-#    deps = [":binaryen_lib"],
-#)
+cc_binary(
+    name = "wasm2js",
+    srcs = [
+        "src/tools/optimization-options.h",
+        "src/tools/tool-options.h",
+        "src/tools/wasm2js.cpp",
+    ],
+    copts = BINARYEN_COPTS,
+    includes = ["src/tools"],
+    deps = [":binaryen_lib"],
+)
 
-#cc_binary(
-#    name = "wasm-as",
-#    srcs = [
-#        "src/tools/tool-options.h",
-#        "src/tools/tool-utils.h",
-#        "src/tools/wasm-as.cpp",
-#    ],
-#    copts = BINARYEN_COPTS,
-#    includes = ["src/tools"],
-#    deps = [":binaryen_lib"],
-#)
+cc_binary(
+    name = "wasm-as",
+    srcs = [
+        "src/tools/tool-options.h",
+        "src/tools/tool-utils.h",
+        "src/tools/wasm-as.cpp",
+    ],
+    copts = BINARYEN_COPTS,
+    includes = ["src/tools"],
+    deps = [":binaryen_lib"],
+)
 
-#cc_binary(
-#    name = "wasm-ctor-eval",
-#    srcs = [
-#        "src/tools/tool-options.h",
-#        "src/tools/wasm-ctor-eval.cpp",
-#    ],
-#    copts = BINARYEN_COPTS,
-#    includes = ["src/tools"],
-#    deps = [":binaryen_lib"],
-#)
+cc_binary(
+    name = "wasm-ctor-eval",
+    srcs = [
+        "src/tools/tool-options.h",
+        "src/tools/wasm-ctor-eval.cpp",
+    ],
+    copts = BINARYEN_COPTS,
+    includes = ["src/tools"],
+    deps = [":binaryen_lib"],
+)
 
-#cc_binary(
-#    name = "wasm-dis",
-#    srcs = [
-#        "src/tools/tool-options.h",
-#        "src/tools/wasm-dis.cpp",
-#    ],
-#    copts = BINARYEN_COPTS,
-#    includes = ["src/tools"],
-#    deps = [":binaryen_lib"],
-#)
+cc_binary(
+    name = "wasm-dis",
+    srcs = [
+        "src/tools/tool-options.h",
+        "src/tools/wasm-dis.cpp",
+    ],
+    copts = BINARYEN_COPTS,
+    includes = ["src/tools"],
+    deps = [":binaryen_lib"],
+)
 
-#cc_binary(
-#    name = "wasm-emscripten-finalize",
-#    srcs = [
-#        "src/tools/tool-options.h",
-#        "src/tools/wasm-emscripten-finalize.cpp",
-#    ],
-#    copts = BINARYEN_COPTS,
-#    includes = ["src/tools"],
-#    deps = [":binaryen_lib"],
-#)
+cc_binary(
+    name = "wasm-emscripten-finalize",
+    srcs = [
+        "src/tools/tool-options.h",
+        "src/tools/wasm-emscripten-finalize.cpp",
+    ],
+    copts = BINARYEN_COPTS,
+    includes = ["src/tools"],
+    deps = [":binaryen_lib"],
+)
 
-#cc_binary(
-#    name = "wasm-metadce",
-#    srcs = [
-#        "src/tools/tool-options.h",
-#        "src/tools/wasm-metadce.cpp",
-#    ],
-#    copts = BINARYEN_COPTS,
-#    includes = ["src/tools"],
-#    deps = [":binaryen_lib"],
-#)
+cc_binary(
+    name = "wasm-metadce",
+    srcs = [
+        "src/tools/tool-options.h",
+        "src/tools/wasm-metadce.cpp",
+    ],
+    copts = BINARYEN_COPTS,
+    includes = ["src/tools"],
+    deps = [":binaryen_lib"],
+)
 
 cc_binary(
     name = "wasm-opt",
@@ -137,48 +141,48 @@ cc_binary(
     ],
     copts = BINARYEN_COPTS,
     includes = ["src/tools"],
-    visibility = ["//third_party/emscripten:__subpackages__"],
+    #    visibility = ["//third_party/emscripten:__subpackages__"],
     deps = [":binaryen_lib"],
 )
 
-#cc_binary(
-#    name = "wasm-reduce",
-#    srcs = [
-#        "src/tools/tool-options.h",
-#        "src/tools/wasm-reduce.cpp",
-#    ],
-#    copts = BINARYEN_COPTS + [
-#        "-Wno-unused-but-set-parameter",  # opt compiles
-#    ],
-#    includes = ["src/tools"],
-#    deps = [":binaryen_lib"],
-#)
+cc_binary(
+    name = "wasm-reduce",
+    srcs = [
+        "src/tools/tool-options.h",
+        "src/tools/wasm-reduce.cpp",
+    ],
+    copts = BINARYEN_COPTS + [
+        "-Wno-unused-but-set-parameter",  # opt compiles
+    ],
+    includes = ["src/tools"],
+    deps = [":binaryen_lib"],
+)
 
-#cc_binary(
-#    name = "wasm-shell",
-#    srcs = [
-#        "src/tools/execution-results.h",
-#        "src/tools/wasm-shell.cpp",
-#    ],
-#    copts = BINARYEN_COPTS,
-#    includes = ["src/tools"],
-#    deps = [":binaryen_lib"],
-#)
+cc_binary(
+    name = "wasm-shell",
+    srcs = [
+        "src/tools/execution-results.h",
+        "src/tools/wasm-shell.cpp",
+    ],
+    copts = BINARYEN_COPTS,
+    includes = ["src/tools"],
+    deps = [":binaryen_lib"],
+)
 
-#cc_binary(
-#    name = "wasm-split",
-#    srcs = [
-#        "src/tools/tool-options.h",
-#        "src/tools/wasm-split/instrumenter.cpp",
-#        "src/tools/wasm-split/instrumenter.h",
-#        "src/tools/wasm-split/split-options.cpp",
-#        "src/tools/wasm-split/split-options.h",
-#        "src/tools/wasm-split/wasm-split.cpp",
-#    ],
-#    copts = BINARYEN_COPTS,
-#    includes = ["src/tools"],
-#    deps = [":binaryen_lib"],
-#)
+cc_binary(
+    name = "wasm-split",
+    srcs = [
+        "src/tools/tool-options.h",
+        "src/tools/wasm-split/instrumenter.cpp",
+        "src/tools/wasm-split/instrumenter.h",
+        "src/tools/wasm-split/split-options.cpp",
+        "src/tools/wasm-split/split-options.h",
+        "src/tools/wasm-split/wasm-split.cpp",
+    ],
+    copts = BINARYEN_COPTS,
+    includes = ["src/tools"],
+    deps = [":binaryen_lib"],
+)
 
 py_binary(
     name = "generate_intrinsics",
