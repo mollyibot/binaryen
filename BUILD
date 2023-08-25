@@ -1,4 +1,4 @@
-#load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_python//python:defs.bzl", "py_binary")
 load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@rules_license//rules:license.bzl", "license")
 
@@ -137,7 +137,7 @@ cc_binary(
     ],
     copts = BINARYEN_COPTS,
     includes = ["src/tools"],
-    visibility = ["//third_party/emscripten:__subpackages__"],
+    #    visibility = ["//third_party/emscripten:__subpackages__"],
     deps = [":binaryen_lib"],
 )
 
