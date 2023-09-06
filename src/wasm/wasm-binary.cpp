@@ -1186,12 +1186,16 @@ void WasmBinaryWriter::writeSourceMapEpilog() {
       *sourceMap << ",";
     }
     writeBase64VLQ(*sourceMap, int32_t(offset - lastOffset));
-    writeBase64VLQ(*sourceMap, int32_t(loc->fileIndex - lastLoc.fileIndex));
-    writeBase64VLQ(*sourceMap, int32_t(loc->lineNumber - lastLoc.lineNumber));
-    writeBase64VLQ(*sourceMap,
-                   int32_t(loc->columnNumber - lastLoc.columnNumber));
-    lastLoc = *loc;
     lastOffset = offset;
+    if (loc) {
+      // There is debug information for this location, so emit the next 3
+      // fields and update lastLoc.
+      writeBase64VLQ(*sourceMap, int32_t(loc->fileIndex - lastLoc.fileIndex));
+      writeBase64VLQ(*sourceMap, int32_t(loc->lineNumber - lastLoc.lineNumber));
+      writeBase64VLQ(*sourceMap,
+                     int32_t(loc->columnNumber - lastLoc.columnNumber));
+      lastLoc = *loc;
+    }
   }
   *sourceMap << "\"}";
 }
@@ -1340,7 +1344,28 @@ void WasmBinaryWriter::writeDebugLocation(Expression* curr, Function* func) {
     auto& debugLocations = func->debugLocations;
     auto iter = debugLocations.find(curr);
     if (iter != debugLocations.end()) {
+      // There is debug information here, write it out.
       writeDebugLocation(iter->second);
+    } else {
+      // This expression has no debug location. We need to emit an indication
+      // of that (so that we do not get "smeared" with debug info from anything
+      // before or after us).
+      //
+      // We don't need to write repeated "no debug info" indications, as a
+      // single one is enough to make it clear that the debug information before
+      // us is valid no longer. We also don't need to write one if there is
+      // nothing before us.
+      if (!sourceMapLocations.empty() &&
+          sourceMapLocations.back().second != nullptr) {
+        sourceMapLocations.emplace_back(o.size(), nullptr);
+
+        // Initialize the state of debug info to indicate there is no current
+        // debug info relevant. This sets |lastDebugLocation| to a dummy value,
+        // so that later places with debug info can see that they differ from
+        // it (without this, if we had some debug info, then a nullptr for none,
+        // and then the same debug info, we could get confused).
+        initializeDebugInfo();
+      }
     }
   }
   // If this is an instruction in a function, and if the original wasm had
@@ -1614,7 +1639,8 @@ WasmBinaryReader::WasmBinaryReader(Module& wasm,
                                    FeatureSet features,
                                    const std::vector<char>& input)
   : wasm(wasm), allocator(wasm.allocator), input(input),
-    sourceMap(nullptr), nextDebugLocation{0, 0, {0, 0, 0}}, debugLocation() {
+    sourceMap(nullptr), nextDebugLocation{0, 0, {0, 0, 0}},
+    nextDebugLocationHasDebugInfo(false), debugLocation() {
   wasm.features = features;
 }
 
@@ -2601,9 +2627,7 @@ void WasmBinaryReader::readFunctions() {
       }
     }
 
-    if (!wasm.features.hasGCNNLocals()) {
-      TypeUpdating::handleNonDefaultableLocals(func, wasm);
-    }
+    TypeUpdating::handleNonDefaultableLocals(func, wasm);
 
     std::swap(func->epilogLocation, debugLocation);
     currFunction = nullptr;
@@ -2776,6 +2800,10 @@ void WasmBinaryReader::readSourceMapHeader() {
     return;
   }
   // read first debug location
+  // TODO: Handle the case where the very first one has only a position but not
+  //       debug info. In practice that does not happen, which needs
+  //       investigation (if it does, it will assert in readBase64VLQ, so it
+  //       would not be a silent error at least).
   uint32_t position = readBase64VLQ(*sourceMap);
   uint32_t fileIndex = readBase64VLQ(*sourceMap);
   uint32_t lineNumber =
@@ -2783,6 +2811,7 @@ void WasmBinaryReader::readSourceMapHeader() {
   uint32_t columnNumber = readBase64VLQ(*sourceMap);
   nextDebugLocation = {
     position, position, {fileIndex, lineNumber, columnNumber}};
+  nextDebugLocationHasDebugInfo = true;
 }
 
 void WasmBinaryReader::readNextDebugLocation() {
@@ -2803,7 +2832,11 @@ void WasmBinaryReader::readNextDebugLocation() {
     debugLocation.clear();
     // use debugLocation only for function expressions
     if (currFunction) {
-      debugLocation.insert(nextDebugLocation.next);
+      if (nextDebugLocationHasDebugInfo) {
+        debugLocation.insert(nextDebugLocation.next);
+      } else {
+        debugLocation.clear();
+      }
     }
 
     char ch;
@@ -2818,6 +2851,17 @@ void WasmBinaryReader::readNextDebugLocation() {
 
     int32_t positionDelta = readBase64VLQ(*sourceMap);
     uint32_t position = nextDebugLocation.availablePos + positionDelta;
+
+    nextDebugLocation.previousPos = nextDebugLocation.availablePos;
+    nextDebugLocation.availablePos = position;
+
+    auto peek = sourceMap->peek();
+    if (peek == ',' || peek == '\"') {
+      // This is a 1-length entry, so the next location has no debug info.
+      nextDebugLocationHasDebugInfo = false;
+      break;
+    }
+
     int32_t fileIndexDelta = readBase64VLQ(*sourceMap);
     uint32_t fileIndex = nextDebugLocation.next.fileIndex + fileIndexDelta;
     int32_t lineNumberDelta = readBase64VLQ(*sourceMap);
@@ -2826,9 +2870,8 @@ void WasmBinaryReader::readNextDebugLocation() {
     uint32_t columnNumber =
       nextDebugLocation.next.columnNumber + columnNumberDelta;
 
-    nextDebugLocation = {position,
-                         nextDebugLocation.availablePos,
-                         {fileIndex, lineNumber, columnNumber}};
+    nextDebugLocation.next = {fileIndex, lineNumber, columnNumber};
+    nextDebugLocationHasDebugInfo = true;
   }
 }
 
@@ -2961,32 +3004,14 @@ void WasmBinaryReader::skipUnreachableCode() {
 void WasmBinaryReader::pushExpression(Expression* curr) {
   auto type = curr->type;
   if (type.isTuple()) {
-    // Store tuple to local and push individual extracted values
+    // Store tuple to local and push individual extracted values.
     Builder builder(wasm);
-    // Non-nullable types require special handling as they cannot be stored to
-    // a local, so we may need to use a different local type than the original.
-    auto localType = type;
-    if (!wasm.features.hasGCNNLocals()) {
-      std::vector<Type> finalTypes;
-      for (auto t : type) {
-        if (t.isNonNullable()) {
-          t = Type(t.getHeapType(), Nullable);
-        }
-        finalTypes.push_back(t);
-      }
-      localType = Type(Tuple(finalTypes));
-    }
     requireFunctionContext("pushExpression-tuple");
-    Index tuple = builder.addVar(currFunction, localType);
+    Index tuple = builder.addVar(currFunction, type);
     expressionStack.push_back(builder.makeLocalSet(tuple, curr));
-    for (Index i = 0; i < localType.size(); ++i) {
-      Expression* value =
-        builder.makeTupleExtract(builder.makeLocalGet(tuple, localType), i);
-      if (localType[i] != type[i]) {
-        // We modified this to be nullable; undo that.
-        value = builder.makeRefAs(RefAsNonNull, value);
-      }
-      expressionStack.push_back(value);
+    for (Index i = 0; i < type.size(); ++i) {
+      expressionStack.push_back(
+        builder.makeTupleExtract(builder.makeLocalGet(tuple, type), i));
     }
   } else {
     expressionStack.push_back(curr);
