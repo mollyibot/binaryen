@@ -226,16 +226,16 @@ genrule(
 # was cut, but we don't easily have access to that number.
 # <version number> must contain only digits because emscripten will throw an
 # error otherwise.
-#genrule(
-#    name = "config",
-#    srcs = [
-#        "METADATA",
-#        "config.h.in",
-#        "CMakeLists.txt",
-#    ],
-#    outs = ["src/config.h"],
-#    cmd = """VER=$$(grep \"project(\" $(location CMakeLists.txt) | cut -d \" \" -f 6 | sed \"s/)//\")
-#             HASH=$$(grep version $(location METADATA) | cut -d '\"' -f 2 | head -n 1)
-#             sed \"s/\\$${PROJECT_VERSION}/$${VER} (version_$${VER}-$${HASH})/\" $(location config.h.in) | sed 's/cmake//' > $(@D)/config.h""",
-#)
+# genrule(
+#     name = "config",
+#     srcs = [
+#         "METADATA",
+#         "config.h.in",
+#         "CMakeLists.txt",
+#     ],
+#     outs = ["src/config.h"],
+#     cmd = """VER=$$(grep \"project(\" $(location CMakeLists.txt) | cut -d \" \" -f 6 | sed \"s/)//\")
+#              HASH=$$(grep version $(location METADATA) | cut -d '\"' -f 2 | head -n 1)
+#              sed \"s/\\$${PROJECT_VERSION}/$${VER} (version_$${VER}-$${HASH})/\" $(location config.h.in) | sed 's/cmake//' > $(@D)/config.h""",
+# )
 # copybara:insert_end
