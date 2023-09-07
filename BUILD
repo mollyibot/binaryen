@@ -121,14 +121,14 @@ cc_binary(
     deps = [":binaryen_lib"],
 )
 
-#copybara:insert_begin
-#py_binary(
-#    name = "wasm-opt",
-#    srcs = ["wasm-opt.py"],
-#    data = [":wasm-opt-impl"],
-#    deps = ["//pyglib:resources"],
-#)
-#copybara:insert_end
+# copybara:insert_begin
+# py_binary(
+#     name = "wasm-opt",
+#     srcs = ["wasm-opt.py"],
+#     data = [":wasm-opt-impl"],
+#     deps = ["//pyglib:resources"],
+# )
+# copybara:insert_end
 
 cc_binary(
     name = "wasm-opt-impl",
