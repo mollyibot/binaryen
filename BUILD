@@ -211,15 +211,15 @@ genrule(
     tools = [":generate_intrinsics"],
 )
 
-#copybara:strip_begin
+# copybara:strip_begin
 genrule(
     name = "config",
     outs = ["src/config.h"],
     cmd = """echo '#define PROJECT_VERSION "HEAD"' >> $@""",
 )
-#copybara:strip_end
+# copybara:strip_end
 
-#copybara:insert_begin
+# copybara:insert_begin
 # Constructs the version string in the form of:
 # version <version number> (version_<version number>-<latest commit hash>)
 # Ideally it would also include number of commits since the last version
@@ -238,4 +238,4 @@ genrule(
 #             HASH=$$(grep version $(location METADATA) | cut -d '\"' -f 2 | head -n 1)
 #             sed \"s/\\$${PROJECT_VERSION}/$${VER} (version_$${VER}-$${HASH})/\" $(location config.h.in) | sed 's/cmake//' > $(@D)/config.h""",
 #)
-#copybara:insert_end
+# copybara:insert_end
