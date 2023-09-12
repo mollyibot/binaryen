@@ -5,7 +5,7 @@
 (module
  (rec
   ;; CHECK:      (rec
-  ;; CHECK-NEXT:  (type $struct (struct ))
+  ;; CHECK-NEXT:  (type $struct (sub (struct )))
   (type $struct (sub (struct)))
   ;; CHECK:       (type $struct2 (struct ))
   (type $struct2 (struct))
@@ -620,10 +620,10 @@
    (drop
     ;; This should not crash due to the new unreachable below.
     (br_on_cast $outer (ref none) (ref none)
-     (ref.cast none
+     (ref.cast (ref none)
       ;; This will be optimized to a drop + unreachable.
       (br_on_cast $outer (ref none) (ref none)
-       (ref.cast none
+       (ref.cast (ref none)
         (local.get $0)
        )
       )
